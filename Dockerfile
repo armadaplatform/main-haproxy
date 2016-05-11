@@ -3,7 +3,7 @@ MAINTAINER Cerebro <cerebro@ganymede.eu>
 
 RUN add-apt-repository -y ppa:vbernat/haproxy-1.6
 RUN apt-get update -y
-RUN apt-get install -y haproxy
+RUN apt-get install -y haproxy socat
 RUN pip install -U bottle
 RUN sed -i 's/ENABLED=0/ENABLED=1/' /etc/default/haproxy
 

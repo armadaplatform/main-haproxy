@@ -1,20 +1,34 @@
 from __future__ import print_function
 
 import base64
+import gzip
+import logging
 import os
+import random
+import re
+import shutil
+import socket
+import subprocess
 import sys
+import traceback
 from datetime import datetime
 
 import bottle
 from bottle import request, response
+
+sys.path.append('/opt/microservice/src')
+from common.consul import consul_get
 
 WELCOME_MESSAGE = '''Welcome to main-haproxy.
 Did you mean to get here?
 Perhaps your magellan is not properly configured or requested service is down.
 '''
 
+STORE_STATS_FOR_DAYS = 7
+STATS_PATH = '/tmp/stats'
 
-def log_request():
+
+def _log_request():
     request_time = datetime.now()
     line = ' '.join(map(str, [
         request.remote_addr,
@@ -26,30 +40,84 @@ def log_request():
     print(line, file=sys.stderr)
 
 
+def _remove_old_stats():
+    if random.randrange(100) == 0:
+        stats_dirs = os.listdir(STATS_PATH)
+        now = datetime.now()
+        for stats_dir in stats_dirs:
+            try:
+                stats_dir_date = datetime.strptime(stats_dir, '%Y-%m-%d')
+            except ValueError:
+                traceback.print_exc()
+                continue
+            if (now - stats_dir_date).total_seconds() > (86400 * STORE_STATS_FOR_DAYS):
+                shutil.rmtree(os.path.join(STATS_PATH, stats_dir))
+
+
+def _save_stats():
+    cmd = 'echo "show stat" | socat unix-connect:/var/run/haproxy/stats.sock stdio'
+    try:
+        stats_csv = subprocess.check_output(cmd, shell=True)
+    except subprocess.CalledProcessError:
+        return
+    now = datetime.now()
+    stats_dir = os.path.join(STATS_PATH, now.date().isoformat())
+    if not os.path.exists(stats_dir):
+        os.makedirs(stats_dir)
+    stats_path = os.path.join(stats_dir, '{}.csv.gz'.format(_clean_string(now.isoformat())))
+    with gzip.open(stats_path, 'wb') as f:
+        f.write(stats_csv)
+    _remove_old_stats()
+
+
+def _clean_string(s):
+    return re.sub(r'[^a-zA-Z0-9_\-\.]', '_', s)
+
+
+def _update_stats_endpoint():
+    stats_enabled = subprocess.call('nc -z localhost 8001'.split()) == 0
+    if stats_enabled:
+        os.system('supervisorctl start register_stats')
+    else:
+        os.system('supervisorctl stop register_stats')
+        service_id = '{}:stats'.format(socket.gethostname())
+        consul_get('agent/service/deregister/{}'.format(service_id))
+
+
 @bottle.route('/upload_config', method='POST')
 def upload_config():
     config_body = base64.b64decode(request.body.read())
     with open('/etc/haproxy/haproxy.cfg', 'w') as haproxy_config_file:
         haproxy_config_file.write(config_body)
+    try:
+        _save_stats()
+    except Exception:
+        logging.warning('Saving haproxy stats failed:')
+        traceback.print_exc()
     os.system('service haproxy reload')
+    try:
+        _update_stats_endpoint()
+    except:
+        logging.warning('Updating haproxy stats endpoint failed:')
+        traceback.print_exc()
 
 
-def default_handler():
+def _default_handler():
     response.status = 503
     response.content_type = 'text/plain'
-    log_request()
+    _log_request()
     return WELCOME_MESSAGE
 
 
 @bottle.route('/')
 def index():
-    return default_handler()
+    return _default_handler()
 
 
 def main():
     error_codes = [404, 405, 503]
     for error_code in error_codes:
-        bottle.error(error_code)(lambda error: default_handler())
+        bottle.error(error_code)(lambda error: _default_handler())
     bottle.run(quiet=True)
 
 
