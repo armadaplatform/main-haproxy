@@ -5,7 +5,6 @@ import gzip
 import logging
 import os
 import random
-import re
 import shutil
 import socket
 import subprocess
@@ -41,17 +40,18 @@ def _log_request():
 
 
 def _remove_old_stats():
-    if random.randrange(100) == 0:
-        stats_dirs = os.listdir(STATS_PATH)
-        now = datetime.now()
-        for stats_dir in stats_dirs:
-            try:
-                stats_dir_date = datetime.strptime(stats_dir, '%Y-%m-%d')
-            except ValueError:
-                traceback.print_exc()
-                continue
-            if (now - stats_dir_date).total_seconds() > (86400 * STORE_STATS_FOR_DAYS):
-                shutil.rmtree(os.path.join(STATS_PATH, stats_dir))
+    if random.randrange(100) > 0:
+        return
+    stats_dirs = os.listdir(STATS_PATH)
+    now = datetime.now()
+    for stats_dir in stats_dirs:
+        try:
+            stats_dir_date = datetime.strptime(stats_dir, '%Y-%m-%d')
+        except ValueError:
+            traceback.print_exc()
+            continue
+        if (now - stats_dir_date).total_seconds() > (86400 * STORE_STATS_FOR_DAYS):
+            shutil.rmtree(os.path.join(STATS_PATH, stats_dir))
 
 
 def _save_stats():
@@ -64,14 +64,10 @@ def _save_stats():
     stats_dir = os.path.join(STATS_PATH, now.date().isoformat())
     if not os.path.exists(stats_dir):
         os.makedirs(stats_dir)
-    stats_path = os.path.join(stats_dir, '{}.csv.gz'.format(_clean_string(now.isoformat())))
-    with gzip.open(stats_path, 'wb') as f:
+    stats_path = os.path.join(stats_dir, '{}.csv.gz'.format(now.strftime('%Y-%m-%dT%H_%M')))
+    with gzip.open(stats_path, 'ab') as f:
         f.write(stats_csv)
     _remove_old_stats()
-
-
-def _clean_string(s):
-    return re.sub(r'[^a-zA-Z0-9_\-\.]', '_', s)
 
 
 def _update_stats_endpoint():
