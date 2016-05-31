@@ -33,3 +33,12 @@ environment set. So the recommended way to run `main-haproxy` is something like 
 
     armada run main-haproxy -p 80:80 --env production-aws       (on every ship in the Armada cluster)
     armada run magellan --env production-aws
+
+
+### Enabling HAProxy stats
+
+Additionally you can enable HAProxy html stats (see http://tecadmin.net/how-to-configure-haproxy-statics/). It will be
+accessible as another endpoint in `main-haproxy`, registered in Armada catalog as `main-haproxy:stats` subservice.
+
+It's best to use magellan to configure that.
+Look [here](https://github.com/armadaplatform/magellan#enabling-haproxy-stats) for more info.
