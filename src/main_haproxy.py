@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import re
 import base64
 import gzip
 import logging
@@ -10,10 +11,12 @@ import socket
 import subprocess
 import sys
 import traceback
+from functools import wraps
 from datetime import datetime
 
 import bottle
-from bottle import request, response
+from armada import hermes
+from bottle import request, response, HTTPError
 
 sys.path.append('/opt/microservice/src')
 from common.consul import consul_get
@@ -23,8 +26,40 @@ Did you mean to get here?
 Perhaps your magellan is not properly configured or requested service is down.
 '''
 
+auth_config = hermes.get_config('auth_config.json', {})
+
 STORE_STATS_FOR_DAYS = 7
 STATS_PATH = '/tmp/stats'
+AUTHORIZATION_TOKEN = auth_config.get('token')
+RESTRICT_ACCESS = bool(AUTHORIZATION_TOKEN)
+
+
+def _restrict_access(raw_token):
+    unauthorized_error = HTTPError(401)
+    try:
+        match = re.match(r'Token (?P<token>\w+)', raw_token)
+    except TypeError:
+        raise unauthorized_error
+
+    if match is None:
+        raise unauthorized_error
+
+    if match.group('token') != AUTHORIZATION_TOKEN:
+        raise unauthorized_error
+
+
+def authorize(fun):
+    @wraps(fun)
+    def wrapper(*args, **kwargs):
+        try:
+            if RESTRICT_ACCESS:
+                _restrict_access(request.headers.get('Authorization'))
+        except HTTPError as e:
+            e.add_header('WWW-Authenticate', 'Token')
+            return e
+        else:
+            return fun(*args, **kwargs)
+    return wrapper
 
 
 def _log_request():
@@ -81,6 +116,7 @@ def _update_stats_endpoint():
 
 
 @bottle.route('/upload_config', method='POST')
+@authorize
 def upload_config():
     config_body = base64.b64decode(request.body.read())
     with open('/etc/haproxy/haproxy.cfg', 'w') as haproxy_config_file:
