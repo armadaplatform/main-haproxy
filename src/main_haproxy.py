@@ -30,7 +30,7 @@ auth_config = hermes.get_config('auth_config.json', {})
 
 STORE_STATS_FOR_DAYS = 7
 STATS_PATH = '/tmp/stats'
-AUTHORIZATION_TOKEN = auth_config.get('token')
+AUTHORIZATION_TOKEN = auth_config.get('main_haproxy_auth_token')
 RESTRICT_ACCESS = bool(AUTHORIZATION_TOKEN)
 
 
