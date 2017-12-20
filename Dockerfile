@@ -1,7 +1,7 @@
 FROM microservice_python
 MAINTAINER Cerebro <cerebro@ganymede.eu>
 
-RUN add-apt-repository -y ppa:vbernat/haproxy-1.8
+RUN add-apt-repository -y ppa:vbernat/haproxy-1.6
 RUN apt-get update -y
 RUN apt-get install -y haproxy socat
 RUN pip install -U bottle armada
@@ -11,7 +11,6 @@ ADD . /opt/main-haproxy
 ADD ./supervisor/* /etc/supervisor/conf.d/
 
 RUN cp /opt/main-haproxy/src/initial_haproxy.cfg /etc/haproxy/haproxy.cfg
-RUN cp /opt/main-haproxy/errors/* /etc/haproxy/errors/
 
 # Port exposed by HAProxy system service. It should be published to the host at port 80.
 # Internal web service main_haproxy.py, used for hosting index page, uploading new haproxy.cfg and health-checks
