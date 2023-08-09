@@ -119,7 +119,7 @@ def _update_stats_endpoint():
 @authorize
 def upload_config():
     config_body = base64.b64decode(request.body.read())
-    with open('/etc/haproxy/haproxy.cfg', 'w') as haproxy_config_file:
+    with open('/etc/haproxy/haproxy.cfg', 'wb') as haproxy_config_file:
         haproxy_config_file.write(config_body)
     try:
         _save_stats()

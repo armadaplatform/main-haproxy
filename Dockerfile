@@ -1,10 +1,10 @@
-FROM microservice_python
+FROM dockyard.armada.sh/microservice_python3
 MAINTAINER Cerebro <cerebro@ganymede.eu>
 
 RUN add-apt-repository -y ppa:vbernat/haproxy-1.9
 RUN apt-get update -y
 RUN apt-get install -y haproxy socat
-RUN pip install -U bottle armada
+RUN python3 -m pip install -U bottle armada
 RUN sed -i 's/ENABLED=0/ENABLED=1/' /etc/default/haproxy
 
 ADD . /opt/main-haproxy
