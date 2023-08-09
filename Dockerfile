@@ -1,7 +1,7 @@
 FROM microservice_python
 MAINTAINER Cerebro <cerebro@ganymede.eu>
 
-RUN add-apt-repository -y ppa:vbernat/haproxy-1.8
+RUN add-apt-repository -y ppa:vbernat/haproxy-1.9
 RUN apt-get update -y
 RUN apt-get install -y haproxy socat
 RUN pip install -U bottle armada
