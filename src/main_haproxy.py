@@ -106,7 +106,7 @@ def _save_stats():
 
 
 def _update_stats_endpoint():
-    stats_enabled = subprocess.call('nc -z localhost 8001'.split()) == 0
+    stats_enabled = os.path.exists('/var/run/haproxy/stats.sock')
     if stats_enabled:
         os.system('supervisorctl start register_stats')
     else:

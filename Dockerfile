@@ -10,7 +10,7 @@ RUN sed -i 's/ENABLED=0/ENABLED=1/' /etc/default/haproxy
 ADD . /opt/main-haproxy
 ADD ./supervisor/* /etc/supervisor/conf.d/
 
-RUN cp /opt/main-haproxy/src/initial_haproxy.cfg /etc/haproxy/haproxy.cfg
+RUN mkdir -p /var/run/haproxy && cp /opt/main-haproxy/src/initial_haproxy.cfg /etc/haproxy/haproxy.cfg
 RUN cp /opt/main-haproxy/errors/* /etc/haproxy/errors/
 
 # Port exposed by HAProxy system service. It should be published to the host at port 80.
